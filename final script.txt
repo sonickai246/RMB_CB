@@ -1,4 +1,4 @@
---[============= RMB Command Block: Full Script with Executor Wrappers =============]--
+--[============= RMB Command Block: Full Script with Persistent Top-Level GUI =============]--
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
@@ -20,7 +20,6 @@ end
 -- EXECUTOR NATIVE HTTP WRAPPER
 ---------------------------------------------------------------------
 local function customHttpGet(url)
-	-- Try executor native request functions first (Bypasses Roblox HttpService settings)
 	local httpRequest = (syn and syn.request) or (http and http.request) or request or http_request
 	if httpRequest then
 		local success, response = pcall(function()
@@ -31,7 +30,6 @@ local function customHttpGet(url)
 		end
 	end
 
-	-- Try game:HttpGet (Supported by JJSploit/legacy executors)
 	local success, result = pcall(function()
 		return game:HttpGet(url)
 	end)
@@ -75,18 +73,31 @@ local function setVisibility(char, trans)
 end
 
 ---------------------------------------------------------------------
--- 2. GUI GENERATION
+-- 2. GUI GENERATION (ALWAYS-ON-TOP & RESPONSIVE)
 ---------------------------------------------------------------------
 local G2L = {}
 local coreGui = game:GetService("CoreGui")
-local pass, uiFolder = pcall(function()
-	return targetPlayer:WaitForChild("PlayerGui", 5)
+
+-- Try CoreGui first (protected from game GUIs), fallback to PlayerGui
+local mountTarget = coreGui
+local successMount = pcall(function()
+	local _ = coreGui.Name
 end)
 
-local mountTarget = (pass and uiFolder) or coreGui
+if not successMount then
+	local pass, uiFolder = pcall(function()
+		return targetPlayer:WaitForChild("PlayerGui", 5)
+	end)
+	mountTarget = (pass and uiFolder) or coreGui
+end
+
+-- ScreenGui Setup with Top Display Priority & Reset Shielding
 G2L["1"] = Instance.new("ScreenGui")
 G2L["1"].Name = "RMBCommandCanvas"
-G2L["1"].ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+G2L["1"].ZIndexBehavior = Enum.ZIndexBehavior.Global
+G2L["1"].DisplayOrder = 999999999 -- Keeps it on top of all game GUIs
+G2L["1"].ResetOnSpawn = false    -- Prevents GUI from disappearing on death/respawn
+G2L["1"].IgnoreGuiInset = true   -- Allows GUI to render over top bar area
 G2L["1"].Parent = mountTarget
 
 G2L["2"] = Instance.new("Frame", G2L["1"])
@@ -95,6 +106,7 @@ G2L["2"].BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 G2L["2"].Size = UDim2.new(0, 264, 0, 360)
 G2L["2"].BorderColor3 = Color3.fromRGB(0, 0, 0)
 G2L["2"].BackgroundTransparency = 1
+G2L["2"].ZIndex = 100
 
 G2L["4"] = Instance.new("ScrollingFrame", G2L["2"])
 G2L["4"].Active = true
@@ -104,6 +116,7 @@ G2L["4"].Size = UDim2.new(0, 264, 0, 300)
 G2L["4"].ScrollBarImageColor3 = Color3.fromRGB(0, 0, 0)
 G2L["4"].Position = UDim2.new(0, 0, 0.16667, 0)
 G2L["4"].BorderColor3 = Color3.fromRGB(255, 255, 255)
+G2L["4"].ZIndex = 101
 
 G2L["5"] = Instance.new("TextButton", G2L["4"])
 G2L["5"].BorderSizePixel = 3
@@ -116,6 +129,7 @@ G2L["5"].Size = UDim2.new(0, 264, 0, 50)
 G2L["5"].BorderColor3 = Color3.fromRGB(0, 5, 255)
 G2L["5"].Text = "CLIP"
 G2L["5"].Name = "Clip"
+G2L["5"].ZIndex = 102
 
 G2L["6"] = Instance.new("TextButton", G2L["4"])
 G2L["6"].BorderSizePixel = 3
@@ -128,6 +142,7 @@ G2L["6"].Size = UDim2.new(0, 258, 0, 45)
 G2L["6"].BorderColor3 = Color3.fromRGB(255, 141, 0)
 G2L["6"].Text = "SKY CHANGE"
 G2L["6"].Name = "Sky"
+G2L["6"].ZIndex = 102
 
 G2L["7"] = Instance.new("TextButton", G2L["4"])
 G2L["7"].BorderSizePixel = 3
@@ -140,6 +155,7 @@ G2L["7"].Size = UDim2.new(0, 258, 0, 45)
 G2L["7"].BorderColor3 = Color3.fromRGB(187, 187, 187)
 G2L["7"].Text = "Invisible"
 G2L["7"].Name = "Invisible"
+G2L["7"].ZIndex = 102
 
 G2L["8"] = Instance.new("TextButton", G2L["4"])
 G2L["8"].BorderSizePixel = 3
@@ -152,6 +168,7 @@ G2L["8"].Size = UDim2.new(0, 258, 0, 45)
 G2L["8"].BorderColor3 = Color3.fromRGB(255, 0, 5)
 G2L["8"].Text = "Kill"
 G2L["8"].Name = "Kill"
+G2L["8"].ZIndex = 102
 
 G2L["9"] = Instance.new("TextButton", G2L["4"])
 G2L["9"].BorderSizePixel = 3
@@ -164,6 +181,7 @@ G2L["9"].Size = UDim2.new(0, 258, 0, 45)
 G2L["9"].BorderColor3 = Color3.fromRGB(17, 184, 255)
 G2L["9"].Text = "Teleport to place"
 G2L["9"].Name = "Teleport Place"
+G2L["9"].ZIndex = 102
 
 G2L["a"] = Instance.new("TextButton", G2L["4"])
 G2L["a"].BorderSizePixel = 3
@@ -176,6 +194,7 @@ G2L["a"].Size = UDim2.new(0, 258, 0, 45)
 G2L["a"].BorderColor3 = Color3.fromRGB(6, 255, 23)
 G2L["a"].Text = "Teleport to player"
 G2L["a"].Name = "Teleport player"
+G2L["a"].ZIndex = 102
 
 G2L["b"] = Instance.new("UIListLayout", G2L["4"])
 G2L["b"].Padding = UDim.new(0, 10)
@@ -192,6 +211,7 @@ G2L["d"].TextColor3 = Color3.fromRGB(255, 255, 255)
 G2L["d"].Size = UDim2.new(0, 203, 0, 60)
 G2L["d"].BorderColor3 = Color3.fromRGB(255, 255, 255)
 G2L["d"].Text = "R.M.B Command Block"
+G2L["d"].ZIndex = 101
 
 G2L["e"] = Instance.new("ImageLabel", G2L["2"])
 G2L["e"].BorderSizePixel = 3
@@ -200,6 +220,7 @@ G2L["e"].Image = "rbxassetid://8965603421"
 G2L["e"].Size = UDim2.new(0, 60, 0, 60)
 G2L["e"].BorderColor3 = Color3.fromRGB(255, 255, 255)
 G2L["e"].Position = UDim2.new(0.77227, 0, 0, 0)
+G2L["e"].ZIndex = 101
 
 G2L["f"] = Instance.new("TextBox", G2L["2"])
 G2L["f"].Name = "IdField"
@@ -214,6 +235,7 @@ G2L["f"].Size = UDim2.new(0, 264, 0, 50)
 G2L["f"].Position = UDim2.new(0, 0, 1, 0)
 G2L["f"].BorderColor3 = Color3.fromRGB(255, 255, 255)
 G2L["f"].Text = ""
+G2L["f"].ZIndex = 101
 
 ---------------------------------------------------------------------
 -- 3. CLIENT INTERACTION LOGIC
@@ -259,7 +281,7 @@ local function getRandomRobloxPlaceId()
 	return safePlaceList[math.random(1, #safePlaceList)]
 end
 
--- Window Dragging Feature
+-- Dragging Feature
 local dragging = false
 local dragInput, dragStart, startPos
 local function updateDrag(input)
@@ -449,4 +471,4 @@ teleportPlayerButton.MouseButton1Click:Connect(function()
 	end
 end)
 
-print("[RMB Command Block] Loaded with Custom HTTP Wrappers.")
+print("[RMB Command Block] Loaded with Top-Level Screen Priority.")
