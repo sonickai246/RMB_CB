@@ -1,4 +1,4 @@
---[============= RMB Command Block: HTTP-Safe Version =============]--
+--[============= RMB Command Block: Full Script with Executor Wrappers =============]--
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
@@ -14,6 +14,32 @@ local targetPlayer = Players.LocalPlayer
 if not targetPlayer then
 	warn("[RMB System] LocalPlayer not found.")
 	return
+end
+
+---------------------------------------------------------------------
+-- EXECUTOR NATIVE HTTP WRAPPER
+---------------------------------------------------------------------
+local function customHttpGet(url)
+	-- Try executor native request functions first (Bypasses Roblox HttpService settings)
+	local httpRequest = (syn and syn.request) or (http and http.request) or request or http_request
+	if httpRequest then
+		local success, response = pcall(function()
+			return httpRequest({ Url = url, Method = "GET" })
+		end)
+		if success and response and response.Body then
+			return response.Body
+		end
+	end
+
+	-- Try game:HttpGet (Supported by JJSploit/legacy executors)
+	local success, result = pcall(function()
+		return game:HttpGet(url)
+	end)
+	if success and result then
+		return result
+	end
+
+	return nil
 end
 
 ---------------------------------------------------------------------
@@ -190,7 +216,7 @@ G2L["f"].BorderColor3 = Color3.fromRGB(255, 255, 255)
 G2L["f"].Text = ""
 
 ---------------------------------------------------------------------
--- 3. CLIENT INTERACTION LOGIC (HTTP-SAFE)
+-- 3. CLIENT INTERACTION LOGIC
 ---------------------------------------------------------------------
 local frame = G2L["2"]
 local clipButton = G2L["5"]
@@ -208,7 +234,6 @@ local timeLoopActive = false
 local invisibleActive = false
 local teleportDebounce = false
 
--- Hardcoded list of working Place IDs in case HTTP / InsertService is disabled
 local safePlaceList = {
 	1897071,        -- Natural Disaster Survival
 	2753915549,     -- Blox Fruits
@@ -218,7 +243,6 @@ local safePlaceList = {
 }
 
 local function getRandomRobloxPlaceId()
-	-- Try fetching dynamically, fallback to static list if HTTP is off
 	local success, result = pcall(function()
 		local randomCategory = math.random(1, 10)
 		return InsertService:GetCollectionAsync(randomCategory)
@@ -232,7 +256,6 @@ local function getRandomRobloxPlaceId()
 		if #places > 0 then return places[math.random(1, #places)] end
 	end
 	
-	-- Fallback when HTTP disabled
 	return safePlaceList[math.random(1, #safePlaceList)]
 end
 
@@ -391,7 +414,6 @@ teleportPlayerButton.MouseButton1Click:Connect(function()
 			teleportDebounce = false
 		end)
 	else
-		-- If player isn't in server, attempt cross-server lookup wrapped safely
 		task.spawn(function()
 			teleportPlayerButton.Text = "Searching..."
 			local targetUserId = tonumber(inputText)
@@ -410,7 +432,7 @@ teleportPlayerButton.MouseButton1Click:Connect(function()
 					task.wait(1)
 					pcall(function() TeleportService:TeleportToPlaceInstance(resultPlaceId, resultInstanceId, targetPlayer) end)
 				else
-					teleportPlayerButton.Text = "HTTP Disabled / Offline"
+					teleportPlayerButton.Text = "Player Offline / Failed"
 					task.delay(3, function()
 						teleportPlayerButton.Text = "Teleport player"
 						teleportDebounce = false
@@ -427,4 +449,4 @@ teleportPlayerButton.MouseButton1Click:Connect(function()
 	end
 end)
 
-print("[RMB Command Block] Loaded (HTTP-Safe).")
+print("[RMB Command Block] Loaded with Custom HTTP Wrappers.")
